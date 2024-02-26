@@ -171,6 +171,15 @@ int main(int argc, char **argv)
   int max_work_group_size = dpct::dev_mgr::instance().current_device().get_info<sycl::info::device::max_work_group_size>();
   printf("max_work_group_size: %d\n", max_work_group_size);
 
+  bool has_local_mem = dpct::dev_mgr::instance().current_device().get_info<sycl::info::device::local_mem_type>() != sycl::info::local_mem_type::none;
+  printf("has_local_mem: %d\n", has_local_mem);
+
+  size_t global_mem_size = dpct::dev_mgr::instance().current_device().get_info<sycl::info::device::global_mem_size>();
+  printf("global_mem_size: %f GB\n", (double)global_mem_size / 1e9);
+
+  size_t local_mem_size = dpct::dev_mgr::instance().current_device().get_info<sycl::info::device::local_mem_size>();
+  printf("local_mem_size: %zu Byte\n", local_mem_size);
+
   /*
   DPCT1093:10: The "devId" device may be not the one intended for use. Adjust
   the selected device if needed.
@@ -274,6 +283,10 @@ int main(int argc, char **argv)
   limit. To get the device limit, query info::device::max_work_group_size.
   Adjust the work-group size if needed.
   */
+  if (!has_local_mem || local_mem_size < (TILE_DIM * TILE_DIM * sizeof(float))) {
+    throw "Device doesn't have enough local memory!";
+  }
+
   queue.submit([&](sycl::handler &cgh) {
     sycl::local_accessor<float, 1> tile_acc_ct1(sycl::range<1>(TILE_DIM * TILE_DIM), cgh);
 
